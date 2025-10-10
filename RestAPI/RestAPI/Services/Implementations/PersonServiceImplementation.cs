@@ -1,52 +1,87 @@
-﻿using RestAPI.Model;
+﻿using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
+using RestAPI.Model;
+using RestAPI.Model.Context;
+using System;
 
 namespace RestAPI.Services.Implementations
 {
     public class PersonServiceImplementation : IPersonService
     {
+        private MySQLContext _context;
+
+        public PersonServiceImplementation(MySQLContext context) 
+        {
+            _context = context;
+        }
+
         Person IPersonService.Create(Person person)
         {
+            try
+            {
+                _context.Add(person);
+                _context.SaveChanges();
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+
             return person;
         }
 
         void IPersonService.Delete(int id)
         {
+            var person = _context.Persons.SingleOrDefault(p => p.Id == id);
+
+            if (person != null)
+            {
+                try
+                {
+                    _context.Remove(person);
+                    _context.SaveChanges();
+                }
+                catch (Exception)
+                {
+                    throw;
+                }
+            }
         }
 
         List<Person> IPersonService.FindAll()
         {
-            List<Person> persons = new List<Person>();
+            return _context.Persons.ToList();
+        }
 
-            for (int i = 0; i < 8; i++)
+        Person? IPersonService.FindById(int id)
+        {
+            var person = _context.Persons.SingleOrDefault(p => p.Id == id);
+            
+            if (person != null)
+                return person;
+
+            return null;
+        }
+
+        Person? IPersonService.Update(Person person)
+        {
+            if (!Exists(person.Id)) return null;
+
+            try
             {
-                var p = new Person
-                {
-                    Id = i + 1,
-                    Nome = $"Teste_{i}",
-                    Endereco = "Teste",
-                    Genero = "Masculino"
-                };
-
-                persons.Add(p);
+                _context.Update(person);
+                _context.SaveChanges();
+            }
+            catch (Exception)
+            {
+                throw;
             }
 
-            return persons;
-        }
-
-        Person IPersonService.FindById(int id)
-        {
-            return new Person
-            {
-                Id = 1,
-                Nome = "Teste",
-                Endereco = "Teste",
-                Genero = "Masculino"
-            };
-        }
-
-        Person IPersonService.Update(Person person)
-        {
             return person;
+        }
+
+        private bool Exists(int id)
+        {
+            return _context.Persons.Any(p => p.Id == id);
         }
     }
 }
